@@ -1,0 +1,90 @@
+<!doctype html>
+const res = await fetch(url);
+if(!res.ok) throw new Error('TMDB API error ' + res.status);
+return await res.json();
+}
+
+
+async function getMovies(type='popular'){
+try{
+grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted)">Loading...</div>';
+const data = await fetchTMDB(`/movie/${type}?language=en-US`);
+displayMovies(data.results || []);
+}catch(err){
+console.error(err);
+grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted)">Failed to load. Check console.</div>';
+}
+}
+
+
+async function searchMovies(query){
+try{
+grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted)">Searching...</div>';
+const data = await fetchTMDB(`/search/movie?language=en-US&query=${encodeURIComponent(query)}`);
+displayMovies(data.results || []);
+}catch(err){
+console.error(err);
+grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted)">Search failed.</div>';
+}
+}
+
+
+function displayMovies(movies){
+grid.innerHTML = '';
+if(!movies || movies.length===0){ empty.style.display='block'; return; } else { empty.style.display='none'; }
+
+
+movies.forEach(m => {
+const card = document.createElement('div');
+card.className = 'card';
+const poster = m.poster_path ? IMG_PATH + m.poster_path : '';
+card.innerHTML = `\n <img class="poster" src="${poster}" alt="${escapeHtml(m.title)} poster" onerror="this.style.opacity=.6">\n <div class=\"cTitle\">${escapeHtml(m.title)}</div>\n <div class=\"meta\">Release: ${m.release_date || '—'} • ⭐ ${m.vote_average || '—'}</div>\n `;
+card.addEventListener('click', ()=>openModal(m.id));
+grid.appendChild(card);
+});
+}
+
+
+async function openModal(movieId){
+try{
+const data = await fetchTMDB(`/movie/${movieId}?language=en-US`);
+const videos = await fetchTMDB(`/movie/${movieId}/videos?language=en-US`);
+document.getElementById('modalTitle').textContent = data.title || 'Movie';
+document.getElementById('modalOverview').textContent = data.overview || '';
+document.getElementById('modalRelease').textContent = data.release_date || '—';
+document.getElementById('modalRating').textContent = data.vote_average || '—';
+document.getElementById('modalPoster').src = data.poster_path ? IMG_PATH + data.poster_path : '';
+
+
+const videoWrap = document.getElementById('videoWrap');
+videoWrap.innerHTML = '';
+const yt = videos.results && videos.results.find(v => v.site === 'YouTube');
+if(yt){
+const iframe = document.createElement('iframe');
+iframe.width = '100%'; iframe.height = '360'; iframe.src = `https://www.youtube.com/embed/${yt.key}`; iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true;
+videoWrap.appendChild(iframe);
+} else {
+videoWrap.innerHTML = '<div style="color:var(--muted)">Trailer not available</div>';
+}
+
+
+modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+}catch(err){
+console.error(err);
+alert('Failed to load movie details. See console for info.');
+}
+}
+
+
+document.getElementById('closeModal').addEventListener('click', ()=>{modal.classList.remove('open');modal.setAttribute('aria-hidden','true');});
+modal.addEventListener('click', (e)=>{ if(e.target===modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); } });
+
+
+function escapeHtml(text){ if(!text) return ''; return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+
+// initial load
+getMovies('popular');
+</script>
+</body>
+</html>
